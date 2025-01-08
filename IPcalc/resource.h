@@ -7,9 +7,11 @@
 #define IDC_STATIC_MASK                 1002
 #define IDC_STATIC_PREFIX               1003
 #define IDC_IPADDRESS                   1004
-#define IDC_IPADDRESS2                  1005
 #define IDC_IPMASK                      1005
 #define IDC_STATIC_INFO                 1006
+#define IDC_EDIT_PREFIX                 1007
+#define IDC_SPIN_PREFIX                 1008
+#define IDC_IPADDRESS1                  1015
 
 // Next default values for new objects
 // 
@@ -17,7 +19,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        103
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1007
+#define _APS_NEXT_CONTROL_VALUE         1016
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
