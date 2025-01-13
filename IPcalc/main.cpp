@@ -10,6 +10,8 @@ using std::endl;
 //#define HAPPY_NEW_YEAR
 
 BOOL CALLBACK DlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+LPSTR FormatIPaddress(CONST CHAR * sz_message, DWORD IPaddress);
+LPSTR FormatMessageWithNumber(CONST CHAR* sz_message, DWORD number);
 DWORD PrefixToSubnetMask(int prefix);
 
 INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInst, LPSTR lpCmdLine, INT nCmdShow)
@@ -40,6 +42,7 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 		HWND hEditPrefix = GetDlgItem(hwnd, IDC_EDIT_PREFIX);
 		DWORD dwIPaddress = 0, dwIPmask = 0;
 		CHAR sz_prefix[3]{};
+		CONST INT SIZE = 256;
 		//std::cout << LOWORD(wParam) << "\n";
 		switch (LOWORD(wParam))
 		{
@@ -50,8 +53,23 @@ BOOL CALLBACK DlgProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 		case IDOK:
 		{
-			CONST INT SIZE = 256;
-			CHAR sz_info[SIZE] = "Info:\nЗдесь будет информация о сети";
+			CHAR sz_info[SIZE] = "Info:\n";
+			CHAR sz_brodcast_address[SIZE]{};
+			CHAR sz_network_address[SIZE]{};
+			CHAR sz_number_of_hosts[SIZE]{};
+
+			SendMessage(hIPaddress, IPM_GETADDRESS, 0, (LPARAM)&dwIPaddress);
+			SendMessage(hIPmask, IPM_GETADDRESS, 0, (LPARAM)&dwIPmask);
+			DWORD dwNetwokrAddress = dwIPaddress & dwIPmask;
+			DWORD dwBroadcastAddress = dwNetwokrAddress | ~dwIPmask;
+			strcat(sz_info, FormatIPaddress("Адрес сети", dwNetwokrAddress));
+			strcat(sz_info, FormatIPaddress("Широковещательный адрес", dwBroadcastAddress));
+			/*strcat(sz_info, "\nКоличество IP-адресов:\t");
+			strcat(sz_info, _itoa(dwBroadcastAddress - dwNetwokrAddress + 1, sz_number_of_hosts, 10));
+			strcat(sz_info, "\nКоличество узлов:\t");
+			strcat(sz_info, _itoa(dwBroadcastAddress - dwNetwokrAddress - 1, sz_number_of_hosts, 10));*/;
+			strcat(sz_info, FormatMessageWithNumber("Количество IP-адресов", dwBroadcastAddress - dwNetwokrAddress + 1));
+			strcat(sz_info, FormatMessageWithNumber("Количество узлов", dwBroadcastAddress - dwNetwokrAddress - 1));
 			HWND hInfo = GetDlgItem(hwnd, IDC_STATIC_INFO);
 			SendMessage(hInfo, WM_SETTEXT, 0, (LPARAM)sz_info);
 		}
@@ -204,4 +222,23 @@ DWORD PrefixToSubnetMask(int prefix)
 	}
 	// Генерация маски подсети с заданным префиксом
 	return (0xFFFFFFFF << (32 - prefix));
+}
+LPSTR FormatIPaddress(CONST CHAR * sz_message, DWORD IPaddress)
+{
+	CHAR sz_buffer[256];
+	sprintf(sz_buffer, "%s:\t%i.%i.%i.%i\n", sz_message,
+		FIRST_IPADDRESS(IPaddress),
+		SECOND_IPADDRESS(IPaddress),
+		THIRD_IPADDRESS(IPaddress),
+		FOURTH_IPADDRESS(IPaddress));
+	return sz_buffer;
+}
+LPSTR FormatMessageWithNumber(CONST CHAR* sz_message, DWORD number)
+{
+	CHAR sz_buffer[256]{};
+	sprintf(
+		sz_buffer,
+		"%s:\t%i\n", sz_message, number
+	);
+	return sz_buffer;
 }
