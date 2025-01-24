@@ -2,13 +2,48 @@
 #include <iostream>
 #include <ws2tcpip.h>
 
-#pragma comment(lib, "Ws2_32.lib")
+
 using std::cin;
 using std::cout;
 using std::endl;
 
 #define DEFAULT_PORT "27015"
 #define BUFFER_SIZE 1500
+#pragma comment(lib, "Ws2_32.lib")
+union ClientSocketData
+{
+	SOCKADDR client_socket;
+	unsigned long long data;
+	ClientSocketData(SOCKADDR client_socket)
+	{
+		this->client_socket = client_socket;
+	}
+	unsigned long long get_data() const
+	{
+		return data;
+	}
+	unsigned short get_port() const
+	{
+		/*int i_port = (data >> 16) & 0xFFFF;
+		return i_port;*/
+		return (unsigned char)(client_socket.sa_data[0]) << 8 | (unsigned char)(client_socket.sa_data[1]);
+	}
+	char* get_socket(char* sz_client_name) const
+	{
+
+		sprintf
+		(
+			sz_client_name,
+			"%i.%i.%i.%i:%i",
+			(unsigned char)client_socket.sa_data[2],
+			(unsigned char)client_socket.sa_data[3],
+			(unsigned char)client_socket.sa_data[4],
+			(unsigned char)client_socket.sa_data[5],
+			get_port()
+		);
+		return sz_client_name;
+	}
+};
 void main()
 {
 	setlocale(LC_ALL, "");
@@ -85,7 +120,7 @@ void main()
 		}
 		
 		//getsockname(ClientSocket, &client_socket, &namelen);
-		sprintf
+		/*sprintf
 		(
 			sz_client_name,
 			"%i.%i.%i.%i:%i",
@@ -94,8 +129,12 @@ void main()
 			(unsigned char)client_socket.sa_data[4],
 			(unsigned char)client_socket.sa_data[5],
 			(unsigned char)(client_socket.sa_data[0]) << 8 | (unsigned char)(client_socket.sa_data[1])
-		);
-		cout << sz_client_name << endl;
+		);*/
+		//ClientSocketData client_data(client_socket);
+		// << "Client: " << client_data.get_socket(sz_client_name) << endl;
+		cout << "Client: " << ClientSocketData(client_socket).get_socket(sz_client_name) << endl;
+		//cout << client_data.get_data() << endl;
+		//cout << "Port: " << client_data.get_port() << endl;
 		//closesocket(ClientSocket);
 		//closesocket(ListenSocket);
 		//6. Receive & Send data;
