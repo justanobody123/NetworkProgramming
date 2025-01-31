@@ -47,6 +47,7 @@ union ClientSocketData
 	}
 };
 void HandleClient(LPVOID lParam);
+void PrintNumberOfClients();
 SOCKET ClientSocket;
 SOCKET client_sockets[MAX_CONNECTIONS]{};
 HANDLE client_handles[MAX_CONNECTIONS]{};
@@ -116,6 +117,7 @@ void main()
 	//5. Accept connection:
 	do
 	{
+		PrintNumberOfClients();
 		int namelen = 32;
 		CHAR sz_client_name[32];
 		SOCKADDR client_socket;
@@ -148,6 +150,7 @@ void main()
 			cout << ClientSocketData(client_socket).get_socket(sz_client_name) << " was disconnected\n";
 			
 		}
+		Sleep(100);
 	} while (true);
 	system("PAUSE");
 	WSACleanup();
@@ -224,4 +227,15 @@ void HandleClient(LPVOID lParam)
 
 	}
 	closesocket(client_sockets[i]);
+}
+
+void PrintNumberOfClients()
+{
+	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+	CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
+	ZeroMemory(&consoleInfo, sizeof(consoleInfo));
+	GetConsoleScreenBufferInfo(hConsole, &consoleInfo);
+	SetConsoleCursorPosition(hConsole, COORD{ 85, 0 });
+	cout << "Количество клиентов: " << number_of_clients << endl;
+	SetConsoleCursorPosition(hConsole, consoleInfo.dwCursorPosition);
 }
