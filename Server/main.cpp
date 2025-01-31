@@ -1,4 +1,4 @@
-#include <winsock2.h>
+п»ї#include <winsock2.h>
 #include <iostream>
 #include <ws2tcpip.h>
 
@@ -9,10 +9,12 @@ using std::endl;
 
 #define DEFAULT_PORT "27015"
 #define BUFFER_SIZE 1500
+#define MAX_CONNECTIONS 3
 #pragma comment(lib, "Ws2_32.lib")
 union ClientSocketData
 {
 	SOCKADDR client_socket;
+	
 	unsigned long long data;
 	ClientSocketData(SOCKADDR client_socket)
 	{
@@ -44,7 +46,14 @@ union ClientSocketData
 		return sz_client_name;
 	}
 };
-void HandleClient(SOCKET ClientSocket);
+void HandleClient(LPVOID lParam);
+SOCKET ClientSocket;
+SOCKET client_sockets[MAX_CONNECTIONS]{};
+HANDLE client_handles[MAX_CONNECTIONS]{};
+DWORD dw_thread_id[MAX_CONNECTIONS]{};
+int* client_number[MAX_CONNECTIONS]{};
+int number_of_clients = 0;
+
 void main()
 {
 	setlocale(LC_ALL, "");
@@ -60,7 +69,7 @@ void main()
 	addrinfo* result = NULL;
 	addrinfo* ptr = NULL;
 	addrinfo hInst;
-	//2.1 Получаем адрес текущего узла:
+	//2.1 РџРѕР»СѓС‡Р°РµРј Р°РґСЂРµСЃ С‚РµРєСѓС‰РµРіРѕ СѓР·Р»Р°:
 	ZeroMemory(&hInst, sizeof(hInst));
 	hInst.ai_family = AF_INET;
 	hInst.ai_socktype = SOCK_STREAM;
@@ -74,7 +83,7 @@ void main()
 		WSACleanup();
 		return;
 	}
-	//2.2 Создаем сокет:
+	//2.2 РЎРѕР·РґР°РµРј СЃРѕРєРµС‚:
 	SOCKET ListenSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
 	if (ListenSocket == INVALID_SOCKET)
 	{
@@ -83,7 +92,7 @@ void main()
 		WSACleanup();
 		return;
 	}
-	//3. Binding - привязываем сокет к порту:
+	//3. Binding - РїСЂРёРІСЏР·С‹РІР°РµРј СЃРѕРєРµС‚ Рє РїРѕСЂС‚Сѓ:
 	iResult = bind(ListenSocket, result->ai_addr, result->ai_addrlen);
 	if (iResult == SOCKET_ERROR)
 	{
@@ -93,8 +102,8 @@ void main()
 		WSACleanup();
 		return;
 	}
-	freeaddrinfo(result); //После вызова функции bind информация об адресе больше не нужна
-	//4. Начинаем прослушивать сокет:
+	freeaddrinfo(result); //РџРѕСЃР»Рµ РІС‹Р·РѕРІР° С„СѓРЅРєС†РёРё bind РёРЅС„РѕСЂРјР°С†РёСЏ РѕР± Р°РґСЂРµСЃРµ Р±РѕР»СЊС€Рµ РЅРµ РЅСѓР¶РЅР°
+	//4. РќР°С‡РёРЅР°РµРј РїСЂРѕСЃР»СѓС€РёРІР°С‚СЊ СЃРѕРєРµС‚:
 	iResult = listen(ListenSocket, SOMAXCONN);
 	if (iResult == SOCKET_ERROR)
 	{
@@ -111,29 +120,51 @@ void main()
 		CHAR sz_client_name[32];
 		SOCKADDR client_socket;
 		ZeroMemory(&client_socket, sizeof(client_socket));
-		SOCKET ClientSocket = accept(ListenSocket, &client_socket, &namelen);
-		if (ClientSocket == INVALID_SOCKET)
+		if (number_of_clients < MAX_CONNECTIONS)
 		{
-			cout << "Accept failed with error #" << WSAGetLastError() << endl;
-			closesocket(ListenSocket);
-			//WSACleanup();
-			//return;
+			client_number[number_of_clients] = (int*)HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sizeof(int));
+			*client_number[number_of_clients] = number_of_clients;
+			client_sockets[number_of_clients] = accept(ListenSocket, &client_socket, &namelen);
+			if (ClientSocket == INVALID_SOCKET)
+			{
+				cout << "Accept failed with error #" << WSAGetLastError() << endl;
+				//closesocket(ListenSocket);
+				//WSACleanup();
+				//return;
+			}
+			//HandleClient(ClientSocket);
+			client_handles[number_of_clients] = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)HandleClient, client_number[number_of_clients], 0, 0);
+			number_of_clients++;
 		}
-		HandleClient(ClientSocket);
-		
+		else
+		{
+			SOCKET extra_socket = accept(ListenSocket, &client_socket, &namelen);
+			char recvextrabuffer[BUFFER_SIZE]{};
+			recv(extra_socket, recvextrabuffer, BUFFER_SIZE, 0);
+			char message[] = "No free connections left";
+			send(extra_socket, message, sizeof(message), 0);
+			shutdown(extra_socket, SD_BOTH);
+			closesocket(extra_socket);
+			cout << ClientSocketData(client_socket).get_socket(sz_client_name) << " was disconnected\n";
+			
+		}
 	} while (true);
-	WSACleanup();
 	system("PAUSE");
+	WSACleanup();
+	
 }
 
-void HandleClient(SOCKET ClientSocket)
+void HandleClient(LPVOID lParam)
 {
+	int i = *((int*)lParam);
+
 	int namelen = 32;
 	CHAR sz_client_name[32];
 	SOCKADDR client_socket;
+
 	ZeroMemory(&client_socket, sizeof(client_socket));
 
-	getpeername(ClientSocket, &client_socket, &namelen);
+	getpeername(client_sockets[i], &client_socket, &namelen);
 		/*sprintf
 		(
 			sz_client_name,
@@ -157,16 +188,16 @@ void HandleClient(SOCKET ClientSocket)
 	do
 	{
 		ZeroMemory(recvbuffer, BUFFER_SIZE);
-		received = recv(ClientSocket, recvbuffer, BUFFER_SIZE, 0);
+		received = recv(client_sockets[i], recvbuffer, BUFFER_SIZE, 0);
 		if (received > 0)
 		{
 			cout << "Bytes received: " << received << endl;
 			cout << "Message from " << sz_client_name << "\t" << recvbuffer << endl;
-			int iSendResult = send(ClientSocket, recvbuffer, received, 0);
+			int iSendResult = send(client_sockets[i], recvbuffer, received, 0);
 			if (iSendResult == SOCKET_ERROR)
 			{
 				cout << "Send failed with error #" << WSAGetLastError() << endl;
-				closesocket(ClientSocket);
+				closesocket(client_sockets[i]);
 				WSACleanup();
 				return;
 			}
@@ -179,18 +210,18 @@ void HandleClient(SOCKET ClientSocket)
 		else
 		{
 			cout << "Receive failed with error #" << WSAGetLastError() << endl;
-			closesocket(ClientSocket);
+			closesocket(client_sockets[i]);
 			//WSACleanup();
 			//return;
 		}
 	} while (received > 0);
 
 	//7. Disconnection:
-	int iResult = shutdown(ClientSocket, SD_SEND);
+	int iResult = shutdown(client_sockets[i], SD_SEND);
 	if (iResult == SOCKET_ERROR)
 	{
 		cout << "shutdown failed with error #" << WSAGetLastError() << endl;
 
 	}
-	closesocket(ClientSocket);
+	closesocket(client_sockets[i]);
 }

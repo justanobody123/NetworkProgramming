@@ -1,4 +1,4 @@
-#include <winsock2.h>
+п»ї#include <winsock2.h>
 #include <iostream>
 #include <ws2tcpip.h>
 
@@ -25,7 +25,7 @@ void main()
 	addrinfo* result = NULL;
 	addrinfo* ptr = NULL;
 	addrinfo hInst;
-	//2.1 Получаем адрес текущего узла
+	//2.1 РџРѕР»СѓС‡Р°РµРј Р°РґСЂРµСЃ С‚РµРєСѓС‰РµРіРѕ СѓР·Р»Р°
 	ZeroMemory(&hInst, sizeof(hInst));
 	hInst.ai_family = AF_UNSPEC;
 	hInst.ai_socktype = SOCK_STREAM;
@@ -63,7 +63,7 @@ void main()
 	}
 	//4. Send & Receive Data
 	bool exit = false;
-	char sendbuffer[BUFFER_SIZE] = "Привет, сервер!";
+	char sendbuffer[BUFFER_SIZE] = "РџСЂРёРІРµС‚, СЃРµСЂРІРµСЂ!";
 	do
 	{
 		
@@ -104,12 +104,17 @@ void main()
 				cout << "Connection closed" << endl;
 			}
 			else cout << "Receive failed with error #" << WSAGetLastError() << endl;
+			if (strcmp(recvbuffer, "No free connections left") == 0)
+			{
+				cout << recvbuffer << endl;
+				break;
+			}
 			
 		//} while (received > 0);
 			if (!exit)
 			{
 				ZeroMemory(sendbuffer, BUFFER_SIZE);
-				cout << "Ваше сообщение: ";
+				cout << "Р’Р°С€Рµ СЃРѕРѕР±С‰РµРЅРёРµ: ";
 				cin.getline(sendbuffer, BUFFER_SIZE);
 			}
 	} while (!exit);
